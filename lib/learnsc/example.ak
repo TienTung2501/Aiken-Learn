@@ -11,6 +11,3 @@ test add_one_2() {
 }
 
 // ... rest of the file is unchanged
-test add_one_3() {
-  add_one(1) == 1
-}

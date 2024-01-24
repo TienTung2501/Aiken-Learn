@@ -1,0 +1,14 @@
+name = "tientung/learnsc"
+version = "0.0.0"
+license = "Apache-2.0"
+description = "Aiken contracts for project 'tientung/learnsc'"
+
+[repository]
+user = "tientung"
+project = "learnsc"
+platform = "github"
+
+[[dependencies]]
+name = "aiken-lang/stdlib"
+version = "1.7.0"
+source = "github"

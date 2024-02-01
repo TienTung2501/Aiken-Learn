@@ -19,61 +19,62 @@ import {
     ),
     "Preview",
 );
+
 lucid.selectWalletFromPrivateKey(await Deno.readTextFile("./me.sk"));
- 
 const validator = await readValidator();
- 
+
+
 // --- Supporting functions
  
 async function readValidator(): Promise<SpendingValidator> {
-  const validator = JSON.parse(await Deno.readTextFile("plutus.json")).validators[1];
+  const validator = JSON.parse(await Deno.readTextFile("plutus.json")).validators[3];
   return {
     type: "PlutusV2",
     script: toHex(cbor.encode(fromHex(validator.compiledCode))),
   };
 }
+const scriptAddress = lucid.utils.validatorToAddress(validator);
 const ownerPublicKeyHash = lucid.utils.getAddressDetails(
     await lucid.wallet.address()
   ).paymentCredential.hash;
 
 const beneficiaryPublicKeyHash =
-    lucid.utils.getAddressDetails(await Deno.readTextFile("beneficiary.addr"))
-        .paymentCredential.hash;
-        
-console.log(1);
+lucid.utils.getAddressDetails("addr_test1vpvk0k92hp444xeqqmuy02pt34u23mpz65x58tehtc9laesdnsfhj")
+    .paymentCredential.hash;
+
 const Datum = Data.Object({// sửa lỗi bằng ép lại kiểu để type script có thể biết rõ được kiểu dữ liệu
-    lock_until: typeof Data.BigInt, // this is POSIX time, you can check and set it here: https://www.unixtimestamp.com
+    policyId: typeof Data.string, // this is POSIX time, you can check and set it here: https://www.unixtimestamp.com
+    assetName:typeof Data.string,
     owner: typeof Data.String, // we can pass owner's verification key hash as byte array but also as a string
     beneficiary: typeof Data.String, // we can beneficiary's hash as byte array but also as a string
-    });// định nghĩa kiểu dữ liệu Datum là một đối tượng có 3 tham số
-type Datum = Data.Static<typeof Datum>;// định nghĩa kiểu dữ liệu datum là 1 kiểu tĩnh
+    });
+    const policyId = "28db0795d7f97637a556183f251eaa51860c7e97a7f851c2534d117c";
+    const   assetName = "54657374205472616e73616374696f6e";
+type Datum = Data.Static<typeof Datum>;
+
 const datum = Data.to<Datum>(
     {
-      lock_until: 1706338063n, // Wed Jan 04 2023 14:52:41 GMT+0000
+        policyId : policyId,
+        assetName : assetName,
       //là thời điểm quyết định đến khi nào một số tài sản (có thể là loại tiền điện tử nhất định) trong hợp đồng sẽ được "khoá" và không thể chi tiêu được nữa.
-      owner: ownerPublicKeyHash, // our own wallet verification key hash
-      beneficiary: beneficiaryPublicKeyHash,
+        owner: ownerPublicKeyHash, // our own wallet verification key hash
+        beneficiary: beneficiaryPublicKeyHash,
     },
     Datum
-  );//Dòng này tạo một đối tượng datum từ kiểu Datum với giá trị cụ thể được đưa vào.
-  console.log(1);
-  const txLock = await lock(20000000, { into: validator, datum: datum });
- 
+  );
+  const NFT = policyId + assetName;
+  const scriptUtxos = await lucid.utxosAt(scriptAddress);
+
+  
+  const txLock = await lock(NFT, { into: validator, datum: datum });
   await lucid.awaitTx(txLock);
-   
-  console.log(`20 tADA locked into the contract
-      Tx ID: ${txLock}
-      Datum: ${datum}
-  `);
-   
-  // --- Supporting functions
-   
-  async function lock(lovelace, { into, datum }): Promise<TxHash> {
+
+  async function lock(NFT, { into, datum }): Promise<TxHash> {
     const contractAddress = lucid.utils.validatorToAddress(into);
-   
+    
     const tx = await lucid
       .newTx()
-      .payToContract(contractAddress, { inline: datum }, { lovelace })
+      .payToContract(contractAddress, { inline: datum }, { [NFT]:BigInt(1) })
       .complete();
    
     const signedTx = await tx.sign().complete();
